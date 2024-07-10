@@ -11,10 +11,10 @@ sources:
           location: "/s3/s3.amazonaws.com/dbt-external-tables-testing/csv/"
           using: |
             STOREDAS('TEXTFILE')
-            -- PATHPATTERN  ('$var1/$section/$var3')
+            -- PATHPATTERN ('$var1/$section/$var3')
           tbl_properties: |
             MAP = TD_MAP1
-            -- ,EXTERNAL SECURITY  MyAuthObj
+            --,EXTERNAL SECURITY testAuth
         columns: &cols-of-the-people
           - name: id
             data_type: int
@@ -38,7 +38,7 @@ sources:
           <<: *csv-people
           partitions:
             - name: section
-              data_type: CHAR(1)
+              data_type: char(1)
         columns: *cols-of-the-people
         tests:
           - <<: *equal-to-the-people
@@ -60,5 +60,58 @@ sources:
               data_type: CHAR(1)
         tests:
           - <<: *equal-to-the-people
+          - dbt_utils.at_least_one:
+              column_name: section
+
+      - name: people_json_unpartitioned
+        external: &json-people
+          location: "/s3/s3.amazonaws.com/dbt-external-tables-testing/json/"
+          using: |
+            STOREDAS('TEXTFILE')
+          tbl_properties: |
+            MAP = TD_MAP1
+            ,EXTERNAL SECURITY testAuth
+
+      - name: people_json_partitioned
+        external:
+          <<: *json-people
+          partitions:
+            - name: section
+              data_type: char(1)
+
+      - name: people_csv_unpartitioned_gs
+        external: &csv-people-gs
+          location: "/gs/storage.googleapis.com/dbt-external-tables-testing/csv/"
+          using: |
+            STOREDAS('TEXTFILE')
+          tbl_properties: |
+            MAP = TD_MAP1
+        columns: &cols-of-the-people-gs
+          - name: id
+            data_type: int
+          - name: first_name
+            data_type: varchar(64)
+          - name: last_name
+            data_type: varchar(64)
+          - name: email
+            data_type: varchar(64)
+        tests: &equal-to-the-people-gs
+          - dbt_utils.equality:
+              compare_model: ref('people')
+              compare_columns:
+                - id
+                - first_name
+                - last_name
+                - email
+
+      - name: people_csv_partitioned_gs
+        external:
+          <<: *csv-people-gs
+          partitions:
+            - name: section
+              data_type: char(1)
+        columns: *cols-of-the-people-gs
+        tests:
+          - <<: *equal-to-the-people-gs
           - dbt_utils.at_least_one:
               column_name: section
